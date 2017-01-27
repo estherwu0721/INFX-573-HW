@@ -1,0 +1,91 @@
+---
+title: 'INFX 573: Problem Set 5 - Learning from Data'
+author: "Insert Your Name Here"
+date: 'Due: Tuesday, November 8, 2016'
+output: pdf_document
+header-includes:
+- \newcommand{\benum}{\begin{enumerate}}
+- \newcommand{\eenum}{\end{enumerate}}
+- \newcommand{\bitem}{\begin{itemize}}
+- \newcommand{\eitem}{\end{itemize}}
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset5.Rmd` file from Canvas. Open `problemset5.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset5.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps5.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE, warning=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(Sleuth3) # Contains data for problemset
+library(UsingR) # Contains data for problemset
+library(MASS) # Modern applied statistics functions
+```
+
+\benum
+\item Davis et al. (1998) collected data on the proportion of births that were male in Denmark, the Netherlands, Canada, and the United States for selected years. Davis et al. argue that the proportion of male births is declining in these countries. We will explore this hypothesis. You can obtain this data as follows:
+
+\bitem
+\item[(a)] Use the \texttt{lm} function in \textbf{R} to fit four (one per country) simple linear regression models of the yearly proportion of males births as a function of the year and obtain the least squares fits. Write down the estimated linear model for each country.
+
+\item[(b)] Obtain the $t$-statistic for the test that the slopes of the regression lines are zero, for each of the four countries. Is there evidence that the proportion of births that are male is truly declining over this period?
+
+\eitem
+
+\item Regression was originally used by Francis Galton to study the relationship between parents and children. One relationship he considered was height. Can we predict a man's height based on the height of his father? This is the question we will explore in this problem. You can obtain data similar to that used by Galton as follows:
+
+```{r}
+# Import and look at the height data
+heightData <- tbl_df(get("father.son"))
+```
+
+\bitem
+\item[(a)] Perform an exploratory analysis of the dataset. Describe what you find. At a minimum you should produce statistical summaries of the variables, a visualization of the relationship of interest in this problem, and a statistical summary of that relationship. 
+ 
+\item[(b)] Use the \texttt{lm} function in R to fit a simple linear regression model to predict son's height as a function of father's height.  Write down the model, $$\hat{y}_{\mbox{\texttt{sheight}}} = \hat{\beta}_0 + \hat{\beta_i} \times \mbox{\texttt{fheight}}$$ filling in estimated coefficient values and interpret the coefficient estimates. 
+
+\item[(c)] Find the 95\% confidence intervals for the estimates. You may find the \texttt{confint()} command useful.
+
+\item[(d)] Produce a visualization of the data and the least squares regression line.
+
+\item[(e)] Produce a visualization of the residuals versus the fitted values. (You can inspect the elements of the linear model object in R using \texttt{names()}). Discuss what you see. Do you have any concerns about the linear model?  
+
+\item[(f)] Using the model you fit in part (b) predict the height was 5 males whose father are 50, 55, 70, 75, and 90 inches respectively. You may find the \texttt{predict()} function helpful.
+
+\eitem
+
+\item \textbf{Extra Credit:}
+
+\bitem
+\item[(a)] What assumptions are made about the distribution of the explanatory variable in the normal simple linear regression model?
+
+\item[(b)] Why can an $R^2$ close to one not be used as evidence that the simple linear regression model is appropriate?
+
+
+\item[(c)] Consider a regression of weight on height for a sample of adult males. Suppose the intercept is 5 kg. Does this imply that males of height 0 weigh 5 kg, on average? Would this imply that the simple linear regression model is meaningless?
+
+\item[(d)] Suppose you had data on pairs $(X,Y)$ which gave the scatterplot been below. How would you approach the analysis?
+
+![Scatterplot for Extra Credit (d).](../figures/scatterplot.png)
+
+\eitem
+
+\eenum

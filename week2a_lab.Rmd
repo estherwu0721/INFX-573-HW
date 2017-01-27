@@ -1,0 +1,136 @@
+---
+title: "INFX 573 Lab: Exploring Data"
+author: "Shuyang Wu"
+date: "October 4th, 2016"
+output: rmarkdown::tufte_handout
+---
+
+# Collaborators: Chaofan Han
+
+# \textbf{Instructions:}
+
+Before beginning this assignment, please ensure you have access to R and/or RStudio. You will also need to install two R packages that we will be using throughout the course.
+\marginnote{\textcolor{blue}{Hint: If you encounter any errors, you might need to install other dependences, including `Rcpp` and `tibble`.}} You can install these packages in R using the following commands:
+
+```{r Prepare, message=FALSE,eval=FALSE}
+# Install packages if you don't have them
+install.packages("tidyverse")
+install.packages("rticles")
+install.packages("tufte")
+```
+
+1. Download the `week2a_lab.Rmd` file from Canvas. Open `week2a_lab.Rmd` in RStudio (or your favorite editor) and supply your solutions to the assignment by editing `week2a_lab.Rmd`.  You will also want to download the `titanic.txt` data file, containing a data about passengers aboard the Titanic.
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name.
+
+3. Be sure to include code chucks, figures and written explanations as necessary. Any collaborators must be listed on the top of your assignment. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit`, rename the R Markdown file to `YourLastName_YourFirstName_lab2a.Rmd`, and knit it into a PDF. Submit the compiled PDF on Canvas.
+
+```{r Setup, message=FALSE}
+# Load some helpful libraries
+library(tidyverse)
+```
+
+# \textbf{Exploring Data:}
+
+The sinking of the RMS Titanic[^titanic_ref] is a notable historical event. The RMS Titanic was a British passenger liner that sank in the North Atlantic Ocean in the early morning of 15 April 1912, after colliding with an iceberg during her maiden voyage from Southampton to New York City. Of the 2,224 passengers and crew aboard, more than 1,500 died in the sinking, making it one of the deadliest commercial peacetime maritime disasters in modern history.
+
+The disaster was greeted with worldwide shock and outrage at the huge loss of life and the regulatory and operational failures that had led to it. Public inquiries in Britain and the United States led to major improvements in maritime safety. One of their most important legacies was the establishment in 1914 of the International Convention for the Safety of Life at Sea (SOLAS)[^solas], which still governs maritime safety today. Additionally, several new wireless regulations were passed around the world in an effort to learn from the many missteps in wireless communications—which could have saved many more passengers.
+
+The data we will explore in this lab were originally collected by the British Board of Trade in their investigation of the sinking. You can download these data in CSV format from Canvas. Researchers should note that there is not complete agreement among primary sources as to the exact numbers on board, rescued, or lost.
+
+## Formulate a Question:
+
+Today, we will consider two questions in our exploration:
+
+- Who were the Titanic passengers? What characteristics did they have?
+- What passenger characteristics or other factors are associated with survival?
+
+## Read and Inspect Data:
+
+To begin, we need to load the Titanic dataset into R. You can do so by executing the following code.
+
+\marginnote{\textcolor{red}{Note: We will learn more about data frame tbl next week. For now, consider it a data frame with tidy printing.}}
+
+```{r Read in Data, message=FALSE}
+titanic <- read.csv("titanic.csv")
+titanic <- tbl_df(titanic) # transform the data into a data frame tbl
+```
+
+Next, we want to inspect our data. We don't want to assume that are data in exactly as we expect it to be after reading it into R. It is helpful to inspect the data object, confirming to looks as expected. 
+
+\marginnote{\textcolor{blue}{
+Hint: Some helpful functions for inspecting data are: \texttt{head(), tail(), str(), nrow(), ncol(), table()}}
+}
+
+Try editing to following code chunk to look at the top and bottom of your data frame. Perform any other inspection operations you deem necessary. Do you observe anything concerning?
+
+```{r Inspect Data, message=TRUE}
+# Edit me to add R code!
+head(titanic)
+tail(titanic)
+str(titanic)
+nrow(titanic) #get the number of passenger
+summary(titanic) #basic summary
+table(titanic$survived) #find survival rate
+```
+
+\marginnote{\textcolor{red}{Note: Remember to describe your results! You should write a reponse to accompany your analysis that comments on what you find.}}
+
+The dataset contains the passengers class, name, survival status, sex, age, number of siblings or spouses aboard, number of parents or children aboard, ticket number, passenger fare, cabin that they stayed in, and the port of embarkation. There are 1309 passangers in total, 466 are female and 843 are male, 809 death and 500 survival. 
+
+Think about the variables in this data as they are defined. Which variables might you want to re-cast to be the appropriate data type in R?
+
+\marginnote{\textcolor{blue}{
+Hint: Consider how variables are measured and how that matches available data types in R.}}
+
+Transform the data type of varibles you identify as improperly cast.
+
+```{r Clean Data, message=TRUE}
+# Edit me to add R code!
+titanic$pclass <- as.factor(titanic$pclass)
+titanic$survived <- as.logical(titanic$survived) #turn into TRUE or FALSE
+titanic$age <- as.integer(titanic$age) #age should be integers
+```
+
+## Trying the Easy Solution First:
+
+First, we want to explore who the passengers aboard the Titanic were. There are many ways we might go about this. Consider for example trying to understand the ages of passengers. We can create a basic visualization to help us understand the distributions of age for Titanic passengers.
+
+```{r, fig.cap = "Age of Passenders Aboard the Titanic", message=FALSE, warning=FALSE}
+ggplot(data = titanic, aes(age)) + 
+  geom_histogram(fill="blue")
+```
+
+We might go further to look at how passenger age might be related to survival.
+
+```{r, fig.cap="Survival and Passenger Age",message=FALSE, warning=FALSE}
+ggplot(data = titanic, aes(age, survived)) + 
+  geom_point(size=2, alpha=0.5, color="red")
+```
+
+\marginnote{\textcolor{red}{Note: You need to add a written response here!}}
+
+Do you like the above figure? Why or why not? Produce a new figure that you think does a better job of helping you explore the association between passenger age and survival.
+
+\marginnote{\textcolor{red}{Note: Don't forget to describe what you find!}}
+
+Identify one additional data feature you want to explore. Produce one visualization that explore this feature. Describe why you think this is interesting and what you find.
+
+## What Next?
+
+\marginnote{\textcolor{red}{Note: You need to add a written response here!}}
+
+Consider the exploratory analysis you completed in the lab exercise. What would you do next?
+
+[^titanic_ref]: https://en.wikipedia.org/wiki/RMS_Titanic
+[^solas]: https://en.wikipedia.org/wiki/International_Convention_for_the_Safety_of_Life_at_Sea
+
+
+
+
+
+
+
+

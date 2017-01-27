@@ -1,0 +1,132 @@
+---
+title: "Demo: Data Import and Export in R"
+author: "Emma S. Spiro"
+date: "Autumn 2016"
+output: html_document
+---
+
+## Built in Data
+
+**R** has many built in datasets, many **R** packages comes with data. The `data()` command will show datasets available in any current loaded packages. For example,
+
+```{r Setup, message=FALSE}
+library(MASS) #statistical inference
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+data()
+```
+
+Data can be loaded and used for analysis.
+
+```{r}
+data(mtcars)
+ls()
+
+head(mtcars)
+?mtcars
+```
+
+
+```{r}
+library(ggplot2movies)
+data(movies)
+head(movies)
+dim(movies)
+?movies
+
+ggplot(movies, aes(x=budget, y=rating, colour=factor(year))) + geom_point(size=2, alpha=.5) + 
+  scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x), # A nicer looking log scale on the plot
+                labels = trans_format("log10", math_format(10^.x))) + 
+  guides(colour=FALSE)
+```
+
+## Importing Data from Text Files
+
+Reading data from text files uses the `read.csv()`, `read.table()` and `read.delim()` functions as follows:
+
+
+```{r}
+titanic_data <- read.csv("titanic.csv")
+head(titanic_data)
+summary(titanic_data)
+```
+
+Consider what happens if:
+
+```{r}
+titanic_data <- read.csv("titanic.csv", header=FALSE)
+head(titanic_data)
+```
+
+We can also read in .txt files:
+
+```{r}
+pew_data <- read.table("pew.txt")
+head(pew_data)
+?read.table()
+
+pew_data <- read.table("pew.txt", header=TRUE)
+head(pew_data)
+
+pew_data <- read.delim("pew.txt", header=TRUE)
+head(pew_data)
+
+```
+
+## Getting Data from the Web
+
+A single public API that shows location, status and current availability for all stations in the New York City bike sharing imitative, CitiBikes NYC.
+
+```{r, message=FALSE}
+library(jsonlite)
+library(XML)
+library(httr)
+library(RCurl)
+```
+
+```{r}
+# CitiBike NYC
+citibike <- fromJSON("http://citibikenyc.com/stations/json")
+stations <- citibike$stationBeanList
+colnames(stations)
+```
+
+The New York Times has several APIs as part of the NYT developer network. These interface to data from various departments, such as news articles, book reviews, real estate, etc. Registration is required (but free) and a key can be obtained at <http://developer.nytimes.com/docs/reference/keys>. The code below includes some example keys for illustration purposes.
+
+```{r}
+#search for articles
+article_key <- "&api-key=c2fede7bd9aea57c898f538e5ec0a1ee:6:68700045"
+url <- "http://api.nytimes.com/svc/search/v2/articlesearch.json?q=obamacare+socialism"
+req <- fromJSON(paste0(url, article_key))
+articles <- req$response$docs
+head(articles)
+```
+
+For more details using jsonlite to get data from the web see <https://cran.r-project.org/web/packages/jsonlite/vignettes/json-apis.html>.
+
+## Packages that help with API access
+
+Provides easier interaction with Socrata open data portals http://dev.socrata.com. Users can provide a 'Socrata' data set resource URL, or a 'Socrata' Open Data API (SoDA) web query, or a 'Socrata' "human-friendly" URL, returns an R data frame. https://cran.r-project.org/web/packages/RSocrata
+
+```{r}
+library(RSocrata)
+earthquakes_df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+head(earthquakes_df)
+```
+
+## Importing Data from a MySQL Database
+
+```{r}
+library(RMySQL)
+mgr <- dbDriver("MySQL")
+mycon <- dbConnect(mgr, user="XXX",  dbname="XXX", 
+                   host="XXX",
+                   password="XXX")
+
+test_data <- dbGetQuery(mycon, "select VARIABLES from TABLE_NAME")
+head(test_data)
+```
+
+

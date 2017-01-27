@@ -1,0 +1,116 @@
+---
+title: "INFX 573 Lab: Data Wrangling"
+author: "Shuyang Wu"
+date: "October 11th, 2016"
+output: 
+  tufte_handout:
+    highlight: tango
+---
+
+\marginnote{\textcolor{blue}{Don't forget to list the full names of your collaborators!}}
+
+# Collaborators: 
+
+# \textbf{Instructions:}
+
+Before beginning this assignment, please ensure you have access to R and/or RStudio. 
+
+1. Download the `week3a_lab.Rmd` file from Canvas. Open `week3a_lab.Rmd` in RStudio (or your favorite editor) and supply your solutions to the assignment by editing `week3a_lab.Rmd`. You will also want to download the `weather.txt` data file, containing a dataset capturing daily temperatures in Cuernavaca, Mexico during 2010. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name.
+
+3. Be sure to include code chucks, figures and written explanations as necessary. Any collaborators must be listed on the top of your assignment. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit`, rename the R Markdown file to `YourLastName_YourFirstName_lab3a.Rmd`, and knit it into a PDF. Submit the compiled PDF on Canvas.
+
+In this lab, you will need access to the following R packages:
+
+```{r Setup, message=FALSE}
+# Load some helpful libraries
+library(tidyverse)
+library(babynames)
+library(reshape2)
+```
+
+# Problem 1: Data Cleaning 
+
+In this problem we will use the `weather.txt` data. Import the data in **R** and answer the following questions.
+
+\marginnote{\textcolor{red}{Hint: You might find the function \texttt{read.table()} useful here.}}
+
+```{r}
+# Read in weather.txt
+weather <- read.table(
+            file = "weather.txt",
+            header = TRUE,
+            check.names = F
+            )
+```
+
+## (a) What are the variables in this dataset? Describe what each variable measures. 
+id, year, month, element (max temperature and min temperature) and days
+
+\marginnote{\textcolor{red}{Hint: There are five variables of interest here.}}
+
+```{r}
+# explore the dataset
+head(weather)
+summary(weather)
+```
+
+## (b) Tidy up the weather data such that each observation forms a row and each variable forms a column. You might find the following functions helpful:
+
+- `melt` 
+- `mutate`
+- `dcast`
+
+```{r}
+# EDIT ME
+weather.tidy <- melt(
+  data = weather,
+  id = c("id","year", "month", "element"),
+  variable.name = "day",
+  value.name = "temp",
+  na.rm = TRUE
+)
+```
+
+# Problem 2: Data Manipulation
+
+In this problem we will use the `babynames` data. Use the data to answer the following questions.
+
+```{r}
+# EDIT ME
+library(babynames)
+library(dplyr)
+head(babynames)
+```
+
+## (a) What name has been used for the most number of years (when used for a single gender)?
+```{r}
+# EDIT ME
+malemax <- babynames %>% group_by(sex, name) %>% summarise(count = n())%>%filter(sex == "M") %>% filter(count == max(count))
+```
+
+## (b) Which name received the largest percentage of any name for any year (consider boy and girl names as distinct)?
+```{r}
+# EDIT ME
+babynames %>% group_by(sex, name) %>% arrange(desc(prop)) %>% head(n=1)
+```
+
+## (c) Which name recorded in the data set has been out of use for the longest time?
+```{r}
+# EDIT ME
+babynames %>% group_by(sex, name) %>% arrange(prop) %>% head(n=1)
+```
+
+## (d) For each year, what is the total number of names that were recorded? Treat boy and girl versions of the same name as two separate names. Did you need to look at the data to answer this question?
+```{r}
+# EDIT ME
+
+```
+
+
+
+
+

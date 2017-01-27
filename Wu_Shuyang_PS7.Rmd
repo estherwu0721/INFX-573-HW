@@ -1,0 +1,317 @@
+---
+title: "INFX 573 Problem Set 7 - Prediction"
+author: "Shuyang Wu"
+date: "Due: Tueday, November 29, 2015"
+output: pdf_document
+header-includes:
+- \newcommand{\benum}{\begin{enumerate}}
+- \newcommand{\eenum}{\end{enumerate}}
+- \newcommand{\bitem}{\begin{itemize}}
+- \newcommand{\eitem}{\end{itemize}}
+---
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset7.Rmd` file from Canvas. Open `problemset7.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset7.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps7.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(gridExtra)
+library(MASS)
+library(pROC)
+library(arm)
+library(randomForest)
+library(xgboost)
+```
+
+\noindent \textbf{Data:} In this problem set we will use the \texttt{titanic} dataset used previously in class. The Titanic text file contains data about the survival of passengers aboard the Titanic. Table \ref{tab:data} contains a description of this data. 
+\vspace{.1in}
+
+```{r}
+# Load data
+titanic_data <- read.csv('~/Downloads/titanic.csv')
+str(titanic_data) # explore data structure
+summary(titanic_data)
+titanic_data$pclass <- as.factor(titanic_data$pclass)
+titanic_data$survived <- as.factor(titanic_data$survived)
+```
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+{\bf Variable} & {\bf Description} \\ \hline \hline
+pclass      &    Passenger Class \\
+            &    (1 = 1st; 2 = 2nd; 3 = 3rd) \\ \hline
+survived    &    Survival \\
+            &    (0 = No; 1 = Yes) \\ \hline
+name        &    Name \\ \hline
+sex         &    Sex \\ \hline
+age         &    Age \\ \hline
+sibsp       &    Number of Siblings/Spouses Aboard \\ \hline
+parch       &    Number of Parents/Children Aboard \\ \hline 
+ticket      &    Ticket Number \\ \hline
+fare        &    Passenger Fare \\ \hline
+cabin       &    Cabin \\ \hline
+embarked    &    Port of Embarkation \\
+            &    (C = Cherbourg; Q = Queenstown; S = Southampton) \\ \hline
+boat        &    Lifeboat \\ \hline
+body        &    Body Identification Number \\ \hline
+home.dest   &    Home/Destination \\
+\hline
+\end{tabular}
+\caption{Description of variables in the Titanic Dataset}
+\label{tab:data}
+\end{table}
+\vspace{.1in}
+
+\newpage
+
+\benum
+\item As part of this assignment we will evaluate the performance of a few different statistical learning methods.  We will fit a particular statistical learning method on a set of \emph{training} observations and measure its performance on a set of \emph{test} observations. 
+
+\bitem
+\item[(a)] Discuss the advantages of using a training/test split when evaluating statistical models.
+Training/test split allows for cross-validation of the statistical model. Without validation, there is no way we can assess the model performance or convincing others whether our model can produce reasonably accurate predictions or not. Additionally, the cross-validation in random Forest or other tree based models can be used for optimal model selection. The random splitting and set.seed() function allow both randomization and reproducibility. 
+
+\item[(b)] Split your data into a \emph{training} and \emph{test} set based on an 80-20 split, in other words, 80\% of the observations will be in the training set.
+\eitem
+
+```{r}
+#split dataset 
+train_size <- floor(0.80 * nrow(titanic_data))
+set.seed(250)
+train_index <- sample(seq_len(nrow(titanic_data)), size = train_size)
+titanic.train <- titanic_data[train_index, ]
+titanic.test <- titanic_data[-train_index, ]
+```
+
+\item In this problem set our goal is to predict the survival of passengers. First consider training a logistic regression model for survival that controls for the socioeconomic status of the passenger. 
+
+\bitem
+\item[(a)] Fit the model described above using the \texttt{glm} function in R. 
+
+```{r}
+#train logistic regression model 
+fit.glm <- glm(survived ~ pclass, family = "binomial", data = titanic.train)
+summary(fit.glm)
+```
+
+Note: I suggested \texttt{bayesglm} as well in case the model was unstable (you can see this with extremely large s.e. estimates for the coefficients). Be sure you included \texttt{pclass} as a \texttt{factor} because it is a categorical variable!
+\item[(b)] What might you conclude based on this model about the probability of survival for lower class passengers?
+\eitem
+Survival = -0.7753 x pclass + 1.2564, p-value << alpha - 0.05 indicating significance of the association. Because the slope of the fitted regression model is negative, passengers' classes (level) are negatively associated with chance of survival. As higher levels are represented by smaller numbers, the larger the class variable means the lower class of the passengers. Thus,lower class passengers have lower probability of survival.
+
+\item Next, let's consider the performance of this model. 
+
+\bitem
+\item[(a)] Predict the survival of passengers for each observation in your test set using the model fit in Problem 2. Save these predictions as \texttt{yhat}.
+
+```{r}
+#use trained logistic regression model to predict test set
+prob.glm <- predict(fit.glm, titanic.test, type = "response")
+yhat <- rep(0, 262)
+yhat[prob.glm >.5] <- 1
+obs <- titanic.test$survived
+table(yhat, obs)
+mean(yhat == obs)
+```
+
+\item[(b)] Use a threshold of 0.5 to classify predictions. What is the number of false positives on the test data? Interpret this in your own words.
+The number of false positive is 24. In other words, there are 24 misclassifications where the predicted value is true whereas the observed value was false.
+
+\item[(c)] Using the \texttt{roc} function, plot the ROC curve for this model. Discuss what you find.
+\eitem
+```{r}
+#plot roc
+roc <- roc(obs, yhat)
+plot.roc(roc)
+auc(roc)
+```
+Both the ROC curve and the Area Under the Curve (AUC) value implies that the prediction accuracy is not very high. ROC curve is close to the 45-degree diagonal line of the ROC space, indicating low accuracy (low sensitivity and specificity) but still better than random guessing basedline. The area under the curve is a measure of text accuracy, which equals to 0.6128. Again, better than random guessing (0.5) but not particularly high.
+
+\item Suppose we use the data to construct a new predictor variable based on a passenger's listed title (i.e. Mr., Mrs., Miss., Master). 
+
+\bitem
+\item[(a)] Why might this be an interesting variable to help predict passenger survival?
+Titile indicates both gender and marital status in common cases. Some times title could also indicate passenger class, e.g. Master.
+\item[(b)] Write a function to add this predictor to your dataset.
+
+```{r}
+#create new variable based on a passenger's listed title 
+titanic_data$title[grep("Mr.", titanic_data$name)] <- "Mr."
+titanic_data$title[grep("Mrs.", titanic_data$name)] <- "Mrs."
+titanic_data$title[grep("Miss.", titanic_data$name)] <- "Miss."
+titanic_data$title[grep("Master", titanic_data$name)] <- "Master"
+titanic_data$title <- as.factor(titanic_data$title)
+```
+
+\item[(c)] Fit a second logistic regression model including this new feature. Use the \texttt{summary} function to look at the model. Did this new feature improve the model? 
+
+```{r}
+#split dataset 
+set.seed(250)
+train_index <- sample(seq_len(nrow(titanic_data)), size = train_size)
+titanic.train <- titanic_data[train_index, ]
+titanic.test <- titanic_data[-train_index, ]
+#train logistic regression model 
+fit.glm.title <- glm(survived ~ title, family = "binomial", data = titanic.train)
+summary(fit.glm.title)
+```
+
+\item[(d)] Comment on the overall fit of this model. For example, you might consider exploring when misclassification occurs.
+"Miss." seems to have no association with survival status, thus classification for class "Miss" would be completely random. I suspect that this is when misclassfication occurs.
+
+\item[(e)] Predict the survival of passengers for each observation in your test data using the new model. Save these predictions as \texttt{yhat2}.
+
+```{r}
+#use trained logistic regression model to predict test set
+prob.glm <- predict(fit.glm.title, titanic.test, type = "response")
+yhat2 <- rep(0, 262)
+yhat2[prob.glm >.5] <- 1
+obs <- titanic.test$survived
+table(yhat2, obs)
+mean(yhat2 == obs)
+```
+
+\eitem
+
+\item Another very popular classifier used in data science is called a \emph{random  forest}\footnote{\url{https://www.stat.berkeley.edu/\~breiman/RandomForests/cc_home.htm}}.
+
+\bitem
+\item[(a)] Use the \texttt{randomForest} function to fit a random forest model with passenger class and title as predictors. Make predictions for the test set using the random forest model. Save these predictions as \texttt{yhat3}.
+
+```{r}
+#train random forest model 
+titanic.train <- titanic.train[!(is.na(titanic.train$title) | titanic.train$title==""), ]
+fit.rf <- randomForest(survived ~ pclass + title, data = titanic.train, mtry = 2, importance =  TRUE)
+fit.rf
+yhat3 = predict(fit.rf, newdata = titanic.test, type = "response")
+```
+
+\item[(b)] Develop your own random forest model, attempting to improve the model performance.  Make predictions for the test set using your new random forest model. Save these predictions as \texttt{yhat4}.
+
+```{r}
+#train random forest model 
+titanic.train <- titanic.train[!(is.na(titanic.train$age) | titanic.train$age==""), ]
+titanic.train <- titanic.train[!(is.na(titanic.train$fare) | titanic.train$fare==""), ]
+fit.rf <- randomForest(survived ~ pclass + title + sex + age + sibsp + parch + fare + embarked, data = titanic.train, mtry = 8, importance =  TRUE)
+fit.rf
+yhat4 = predict(fit.rf, newdata = titanic.test, type = "response")
+tuneRF(titanic.train[, c(1,4,5,6,7,9,11,15)], titanic.train$survived, mtryStart = 8, ntreeTry=50, stepFactor=3, improve=0.05, trace=TRUE, plot=TRUE)
+fit.rf <- randomForest(survived ~ pclass + title + sex + age + sibsp + parch + fare + embarked, data = titanic.train, mtry = 3, importance =  TRUE)
+fit.rf
+yhat4 = predict(fit.rf, newdata = titanic.test, type = "response")
+```
+
+\item[(c)] Compare the accuracy of each of the models from this problem set using ROC curves. Comment on which statistical learning method works best for predicting survival of the Titanic passengers. 
+
+```{r}
+#compare accuracies
+obs <- titanic.test$survived
+par(mfrow=c(2,2))
+roc1 <- roc(obs, yhat)
+plot.roc(roc1)
+roc2 <- roc(obs, yhat2)
+plot.roc(roc2)
+yhat3 <- as.numeric(yhat3)
+roc3 <- roc(obs, yhat3, na.rm = TRUE)
+plot.roc(roc3)
+yhat4 <- as.numeric(yhat4)
+roc4 <- roc(obs, yhat4, na.rm = TRUE)
+plot.roc(roc4)
+auc(roc1)
+auc(roc2)
+auc(roc3)
+auc(roc4)
+```
+Random forest modeling method works best for predicting survival of the Titanic passengers based on the AUC values (both random forest models have the highest prediction accuracies) and ROC curves.
+
+\item Finally, we will explore a gradient boosted tree model, using the `xgboost` package written by your fellow UW student Tianqi Chen. `xgboost` stands for ``Extreme Gradient Boosting'', which is state-of-the-art software known for its fast training time and predictive accuracy.
+
+\bitem
+\item[(a)] The XGB algorithm can only handle numeric data, so first we need to convert all categorical variables to a different representation, such as a sparse matrix.
+
+```{r}
+library(Matrix)
+set.seed(250)
+train_index <- sample(seq_len(nrow(titanic_data)), size = train_size)
+train <- titanic_data[train_index, ]
+test <- titanic_data[-train_index, ]
+train <- train[!(is.na(train$title) | train$title==""), ]
+sparse.matrix.train <- sparse.model.matrix(survived~pclass + sex + title -1, data = train) #converts train set factors to columns
+sparse.matrix.test <-  sparse.model.matrix(survived~pclass + sex + title -1, data = test) #converts test set factors to columns
+output_vector = as.numeric(train$survived) - 1 #output vector to be predicted
+```
+
+\item[(b)] The following code fits a boosted tree model and produces a plot. Run the code and provide an explanation of the resulting plot.
+
+```{r}
+xgb.model.one <- xgb.cv(data= sparse.matrix.train,     #train sparse matrix
+                       label= output_vector,    #output vector to be predicted 
+                       eval.metric = 'logloss',     #model minimizes Root Mean Squared Error
+                       objective = "reg:logistic", #regression
+                       nfold = 10,
+                       #tuning parameters
+                       max.depth = 3,            #Vary btwn 3-15
+                       eta = 0.05,                #Vary btwn 0.1-0.3
+                       nthread = 5,             #Increase this to improve speed
+                       subsample= 1,            #Vary btwn 0.8-1
+                       colsample_bytree = 0.5,   #Vary btwn 0.3-0.8
+                       lambda = 0.5,             #Vary between 0-3
+                       alpha = 0.5,              #Vary between 0-3
+                       min_child_weight = 3,     #Vary btwn 1-10
+                       nround = 100             #Vary btwn 100-3000 based on max.depth, eta,subsample & colsample
+                       )
+plot(data.frame(xgb.model.one)[,1], type='l', col='black', ylab='CV logloss Error', xlab='# of trees')
+lines(data.frame(xgb.model.one)[,3], type='l', lty=2, col='black')
+```
+The plot shows that as number of trees bagged gets larger to 100, the Root Mean Squared Error gets smallers, meaning model performance get better.
+
+\item[(c)] Modify the code to fit a boosted tree model that allows for 8 levels in each tree and uses a learning rate $\eta=.1$. Produce a visualization comparing the two models and explain what you can conclude about the new model. Which model do you prefer and why?
+
+```{r}
+xgb.model.two <- xgb.cv(data= sparse.matrix.train,     #train sparse matrix
+                       label= output_vector,    #output vector to be predicted 
+                       eval.metric = 'logloss',     #model minimizes Root Mean Squared Error
+                       objective = "reg:logistic", #regression
+                       nfold = 10,
+                       #tuning parameters
+                       max.depth = 8,            #Vary btwn 3-15
+                       eta = 0.1,                #Vary btwn 0.1-0.3
+                       nthread = 5,             #Increase this to improve speed
+                       subsample= 1,            #Vary btwn 0.8-1
+                       colsample_bytree = 0.5,   #Vary btwn 0.3-0.8
+                       lambda = 0.5,             #Vary between 0-3
+                       alpha = 0.5,              #Vary between 0-3
+                       min_child_weight = 3,     #Vary btwn 1-10
+                       nround = 100             #Vary btwn 100-3000 based on max.depth, eta,subsample & colsample
+                       )
+par(mfrow=c(1,2))
+plot(data.frame(xgb.model.one)[,1], type='l', col='black', ylab='CV logloss Error', xlab='# of trees')
+lines(data.frame(xgb.model.one)[,3], type='l', lty=2, col='black')
+plot(data.frame(xgb.model.two)[,1], type='l', col='black', ylab='CV logloss Error', xlab='# of trees')
+lines(data.frame(xgb.model.two)[,3], type='l', lty=2, col='black')
+```
+I prefer the second model with 8 levels and eta = .1 because the Root Mean Squared Error gets minimized faster than the first model. Therefore, the number of trees does not have to be around 100 to get a model with similar performance as the first model containing 100 trees.
+\eitem
+
+
+\eitem
+\eenum

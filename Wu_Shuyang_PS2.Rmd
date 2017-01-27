@@ -1,0 +1,144 @@
+---
+title: 'INFX 573: Problem Set 2 - Data Wrangling'
+author: "Shuyang Wu"
+date: 'Due: Monday, October 18, 2016'
+output: pdf_document
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset2.Rmd` file from Canvas. Open `problemset2.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset2.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps2.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(nycflights13)
+library(jsonlite)
+```
+
+#### Problem 1: Open Government Data ####
+
+Use the following code to obtain data on the Seattle Police Department Police Report Incidents.
+
+```{r}
+police_incidents <- fromJSON("https://data.seattle.gov/resource/7ais-f98f.json")
+```
+
+##### (a) Describe, in detail, what the data represents. 
+```{r}
+#1a
+head(police_incidents)
+```
+The data represents incidents happened around Seattle recorded in police reports when officers responded to them. Each row in the dataset represents a single incident/police report. Columns represent various information related to the incident. Specifically, offense type, offense code, offense code extension, general offense number, summarized offense description and summary offense code describe in detail the offense happened in the incidence. Rms cdw id correspond to the original report in the Records Management System (RMS) which was then transmitted out to data.seattle.gov and generated this dataset. Year, month, date reported, occured data or date range start and occured data range end store data on the time that the incidence was reported and happened. Zone beat, latitude, longitude, hundred block location, district sector and census tract 2000 represent location and the precinct(zone/beat) of the incidents.        
+
+##### (b) Describe each variable and what it measures. Be sure to note when data is missing. Confirm that each variable is appropriately cast - it has the correct data type. If any are incorrect, recast them to be in the appropriate format. 
+```{r}
+#1b
+str(police_incidents) #check current data type
+colnames(police_incidents)[colSums(is.na(police_incidents)) > 0] #columns that had missing value
+#recast categorical variables into factor data type, continuous into numeric/integer
+police_incidents$offense_code_extension <- as.factor(police_incidents$offense_code_extension)
+police_incidents$location$needs_recoding <- as.logical(police_incidents$location$needs_recoding)
+police_incidents$offense_code <- as.factor(police_incidents$offense_code)
+police_incidents$rms_cdw_id <- as.factor(police_incidents$rms_cdw_id)
+police_incidents$general_offense_number <- as.factor(police_incidents$general_offense_number)
+police_incidents$year <- as.integer(police_incidents$year)
+police_incidents$latitude <- as.numeric(police_incidents$latitude)
+police_incidents$longitude <- as.numeric(police_incidents$longitude)
+police_incidents$summary_offense_code <- as.factor(police_incidents$summary_offense_code)
+police_incidents$month <- as.integer(police_incidents$month)
+police_incidents$location$latitude <- as.numeric(police_incidents$location$latitude)
+police_incidents$location$longitude <- as.numeric(police_incidents$location$longitude)
+police_incidents$district_sector <- as.factor(police_incidents$district_sector)
+str(police_incidents) #check final data type
+```
+Offense type, offense code, offense code extension, general offense number, summarized offense description and summary offense code measure the types of offense happened in the incidences. Rms cdw id measures the original report in the Records Management System. Year, month, date reported, occured data or date range start and occured data range end measure time that the incidence was reported and time (period) that it happened. Zone beat, latitude, longitude, hundred block location, district sector and census tract 2000 measure location and the precinct(zone/beat) of the incidents. 
+
+Year, zone beat, latitude, summarized offense description, data reported, occured data or date range start, summary offense code, month, census tract 2000, location, hundred block location, district secror, longitude and occured data range end columns have missing value.
+
+##### (c) Produce a clean dataset, according to the rules of tidy data discussed in class. Export the data for future analysis using the Rdata format. 
+```{r}
+#1c
+police_incidents_tidy <- police_incidents #duplicate original dataset
+police_incidents_tidy$latitude <- NULL #remove duplicated columns
+police_incidents_tidy$longitude <- NULL
+police_incidents_tidy$hundred_block_location <- NULL #latitude and longitude data are sufficient to represent location
+police_incidents_tidy$offense_code[police_incidents_tidy$offense_code == "X"] <- NA #recode missing value as NA
+police_incidents_tidy$summary_offense_code[police_incidents_tidy$summary_offense_code == "X"] <- NA
+save(police_incidents_tidy, file="police_incidents_tidy.RData")
+```
+
+##### (d) Describe any concerns you might have about this data. This may include biases, missing data, or ethical concerns.
+This data can be a threat for privacy violation because it contains very detailed information of the location and the offense type. It'd be easy to find people living in residences where there was a reported incidence without knowing if the incidence actually represent anything about people who lives there or the safety of the neighborhood. 
+
+#### Problem 2:  Wrangling the NYC Flights Data ####
+
+In this problem set we will use the data on all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013. You can find this data in the `nycflights13` R package. 
+
+##### (a) Importing Data: ##### 
+Load the data. 
+
+```{r}
+head(nycflights13::flights)
+summary(nycflights13::flights)
+```
+
+##### (b) Data Manipulation: ##### 
+Use the flights data to answer each of the following questions. Be sure to answer each question with a written response and supporting analysis.
+
+- How many flights were there from NYC airports to Seattle in 2013?
+```{r}
+table(nycflights13::flights$year) #confirm all data are from 2013
+table(nycflights13::flights$origin) #confirm all flights departed from NYC
+nyc_sea <- subset(nycflights13::flights, dest == "SEA") #Subset dataset to have only "SEA" as destination
+nrow(nyc_sea) #count number of flights (rows) in the new dataset
+```
+There were 3923 flights from NYC airports to Seattle.
+
+- How many airlines fly from NYC to Seattle?
+```{r}
+#count unique carriers
+length(unique(nyc_sea$carrier))
+```
+5 different airlines fly from NYC to Seattle.
+
+- How many unique air planes fly from NYC to Seattle?
+```{r}
+#count unique airplanes (combine values from carrier and flight to create new column)
+nyc_sea$airplane<- with(nyc_sea, paste0(carrier, flight))
+length(unique(nyc_sea$airplane))
+```
+There were 166 unique airplanes flew from NYC to Seattle.
+
+- What is the average arrival delay for flights from NYC to Seattle?
+```{r}
+#calculate mean value for column(arr_delay)
+class(nyc_sea$arr_delay) #check for correct data type
+nyc_sea <- na.omit(nyc_sea) # remove mising values from df
+mean(nyc_sea$arr_delay) 
+```
+The average arrival delay was -1.099.
+
+- What proportion of flights to Seattle come from each NYC airport?
+Out of all flights leaving from NYC to Seattle, 46.6% of them came from EWR, 53.4% came from JFK.
+```{r}
+prop.table(table(nyc_sea$origin)) # proportion table for origin column
+```

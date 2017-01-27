@@ -1,0 +1,70 @@
+---
+title: "week8b_lab"
+author: "Shuyang Wu"
+date: "11/17/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r stockMarket}
+library (ISLR)
+names (Smarket) #look at columns/variables in the Smarket dataset
+dim (Smarket) #dimension of the dataset
+summary (Smarket)
+pairs (Smarket) #produce a matrix of scatterplot to capture all pair-wise interactions between all vairables
+cor (Smarket[,-9]) #correlation coefficients of the above matrix, minus the column that's not quantitative
+attach (Smarket)
+plot(Volume) #plot the column in Smarket that's named Volume
+```
+There appears to be little correlation between today’s returns and previous days’ returns.
+The average number of shares traded daily increased from 2001 to 2005.
+
+```{r logisticRegression}
+#logsitic regression on the entire dataset
+glm.fit =glm(Direction ~ Lag1+ Lag2+ Lag3+Lag4+ Lag5+Volume, data=Smarket , family=binomial)#fit a logistic regression, family = biomial indicates logistic regression
+summary(glm.fit) #summary of the fitted model
+coef(glm.fit) #look at coefficient only
+summary(glm.fit)$coef #look at coefficients and ste, z value, and P values
+glm.probs = predict(glm.fit, type ="response") #predict the training set because there is no test set, look at Probabilities of direction = up
+glm.probs[1:10] #look at first tehn probabilities
+contrasts(Direction) #direction = up is because R created 1 for Up
+
+#check model accuracy
+glm.pred=rep("Down", 1250) #replicate "Down" 1250 times (number of rows in Smarket dataset)
+glm.pred[glm.probs > 0.5]="Up" #for all probabilities in glm.probs, if > 0.5, rename as "Up"
+table(glm.pred, Direction) #confusion matrix
+(507+145) /1250 #accuracy of the model
+mean(glm.pred == Direction) #same as above, compute the fraction of days for which the prediction was correct
+
+#split into train and test
+train =(Year<2005) #extract Smarket's data before 2005
+Smarket.2005= Smarket[!train,] #extract Smarket's data after 2005
+dim(Smarket.2005) #see how many data points are included
+Direction.2005= Direction[!train] #extract Direction's data after 2005
+glm.fit =glm ( Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Smarket, family = binomial, subset = train) #fit logistic regression only on the train (data before 2005)
+glm.probs = predict(glm.fit, Smarket.2005, type ="response") #predict Directions on the test set
+
+#check model accuracy
+glm.pred=rep ("Down ", 252)
+glm.pred[glm.probs >.5]="Up"
+table(glm.pred, Direction.2005)
+mean(glm.pred == Direction.2005) #fraction
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

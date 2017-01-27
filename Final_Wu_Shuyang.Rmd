@@ -1,0 +1,293 @@
+---
+title: 'Final573'
+author: "Shuyang Wu"
+date: "12/4/2016"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+library(AER)
+library(bestglm)
+library(car)
+library(DAAG)
+library(MASS)
+library(tree)
+library(RCurl)
+library(data.table)
+library(randomForest)
+library(pROC)
+library(titanic)
+library(ISLR)
+```
+Problem 1 (25 pts)
+In this problem we will use the infidelity data, known as the Fair's affairs dataset. The `Affairs` dataset is available as part of the AER package in R. This data comes from a survey conducted by Psychology Today in 1969, see Greene (2003) and Fair (1978) for more information. The dataset contains various self-reported characteristics of 601 participants, including how often the
+respondent engaged in extramarital sexual intercourse during the past year, as well as their gender, age, year married, whether they had children, their religiousness (on a 5-point scale, from 1=anti to 5=very), education, occupation (Hollinghead 7-point classification with reverse numbering), and a numeric self-rating of their marriage (from 1=very unhappy to 5=very happy).
+```{r}
+#load dataset
+data("Affairs")
+affairs <- Affairs
+
+#Data exploration
+head(affairs) #look at top 10 rows of the dataset
+dim(affairs)
+summary(affairs) #see summary statistics of the dataset
+prop.table(table(affairs$gender)) #gender distribution
+prop.table(table(affairs$children)) #children status distribution
+
+#create binary variable for affairs
+affairs$A <- rep(FALSE, 601)
+affairs$A[affairs$affairs != 0] <- TRUE
+
+#logistic regression model predicting affair status
+glm.a <- glm(A ~ gender+age+yearsmarried+children+religiousness+education+occupation+rating, family = "binomial", data = affairs)
+summary(glm.a)
+
+#find best glm model reference: ftp://cran.r-project.org/pub/R/web/packages/bestglm/bestglm.pdf
+best <- bestglm(affairs[,-1], family = binomial, IC = "AIC", method = "exhaustive")
+best$BestModels #show top five models
+print(best) #print best model and its parameter
+
+#create an artificial test dataset
+yearsmarried <- rep(mean(affairs$yearsmarried), 601)
+test <- data.frame(yearsmarried)
+test$religiousness <- rep(mean(affairs$religiousnes), 601)
+r <- 1:5
+set.seed(1)
+test$rating <- sample(r, 601, replace = TRUE)
+test <- as.data.frame(test)
+glm.best <- glm(A ~ yearsmarried+religiousness+rating, family = "binomial", data = affairs)
+
+#predict the testset and visualize the relationship between predictor variable and the predicted outcome
+pred.a <- predict(glm.best, test, type = "response")
+pred.b <- rep(FALSE, 601)
+pred.b[pred.a > 0.5] <- TRUE
+prop.table(table(pred.b)) #proportion of people having affair
+test$pred.affair <- pred.a
+plot(test$rating, test$pred.affair, main = "Correlation between marriage rating and predicted affair outcome", xlab = "marriage rating", ylab = "predicted probability of having an affair")
+```
+(a) Describe the participants. Use descriptive, summarization, and exploratory techniques to describe the participants in the study. For example, what proportion of respondents are female? What is the average age of respondents?
+
+The average number of affairs made was 1.456. The gender distribution was 52.4% women and 49.6% men. The average age of participants was 32.5, the average duration of the marriages was 8 years. 28.4% couple did not have children, 71.5% did.
+
+(b) Suppose we want to explore the characteristics of participants who engage in extramarital sexual intercourse (i.e. affairs). Instead of modeling the number of affairs, we will consider the binary outcome - had an affair versus didn't have an affair. Create a new variable to capture this response variable of interest.
+
+(c) Use an appropriate regression model to explore the relationship between having an affair and other personal characteristics. Comment on which covariates seem to be predictive of having an affair and which do not.
+
+Religiousness, rating about the marriage seem to be most predictive of having an affair, years married is less predictive than these two, age is also a weak predictor. Gender, whether have children or not, education and occupation are not predictive of having an affair.
+
+(d) Use an all subsets model selection procedure to obtain a best fit model. Is the model different from the full model you fit in part (c)? Which variables are included in the best fit model? You might find the bestglm() function available in the bestglm package helpful.
+
+The best fit model has yearsmarried, religiousness and rating as predictors. It did not include age which was a less significant predictor shown in the glm model in (c).
+
+(e) Interpret the model parameters using the model from part (d).
+
+The fit model can be interpreted as: whether of not having an affair = 0.055 x yearsmarried - 0.331 x religiousness - 0.453 x rating + 1.138. The first positive parameter means the more years married, the more likely one is to have an affair. The two negative parameters show that the less regilious and less satisfied/rating of the marriage the more likely one is to have an affair.
+
+(f) Create an artificial test dataset where martial rating varies from 1 to 5 and all other variables are set to their means. Use this test dataset and the predict function to obtain predicted probabilities of having an affair for case in the test data. Interpret your results and use a visualization to support your interpretation. 
+
+The overall predicted proportion of people having an affair is 0.193. My result also shows a negative correlation between the marriage rating and the predicted probability of having an affair, meaning the higher rating one gives regarding the marriage, the less likely one would have an affair. 
+
+## Problem 2
+Problem 2 (25 pts)
+In this problem we will revisit the state dataset. This data, available as part of the base R package, contains various data related to the 50 states of the United States of America. Suppose you want to explore the relationship between a state's Murder rate and other characteristics of the state, for example population, illiteracy rate, and more. Follow the questions below to perform this analysis.
+
+```{r}
+state <- data.frame(state.x77)
+scatterplotMatrix(state)
+
+#linear regression model
+lm.s <- lm(Murder ~ Population+Income+Illiteracy+Life.Exp+HS.Grad+Frost+Area, data = state)
+summary(lm.s)
+plot(lm.s)
+
+#stepwise model selection
+steps <- stepAIC(lm.s, direction="both")
+steps$anova #display final model
+
+#10 fold cross-validation
+lm.f <- lm(Murder ~ Population + Illiteracy + Life.Exp + Frost + Area, state)
+cv.l <- cv.lm(state, lm.f, m=10)
+#cross-validated standard error of estimate = 
+sqrt((3.19 + 4.58 + 3.05 + 0.94 + 3.54 + 4.8 + 1.64 + 1.38 + 6.97 + 2.47)/50)
+```
+
+(a) Examine the bivariate relationships present in the data. Briefly discuss notable results. You might find the scatterplotMatrix() function available in the car package helpful.
+
+Income and high school graduate rate, life expectancy are positively associated. Income and Murder rate are negatively associated. Illiteracy and life expectancy, high school graduate rate, Frost (mean number of days with minimum temperature below freezing) are negatively associated. Illiteracy and Murder rate are possitively associated. Life expectancy and murder rate are negatively associated. High school graduate rate and life expectance are possitively associated. Frost and murder rate are nagetively associated. 
+
+(b) Fit a multiple linear regression model. How much variance in the murder rate across states do the predictor variables explain?
+
+Predictor variables were able to explain 77.6% of the variance in the murder rate based on this linear regression model.
+
+(c) Evaluate the statistical assumptions in your regression analysis from part (b) by performing a basic analysis of model residuals and any unusual observations. Discuss any concerns you have about your model.
+
+There are four assumptions for the regression analysis: linear and additive relationship between predictors and the outcome; no correlation between errors; constant variance of the errors; and normality of the error distribution. 
+Because the residual versus fitted plot shows symmetrically distributed points around the horizonal line with a relatively constant variance, which means the errors variance is constant. Also because the fitted line is reasonably linear, the predictors and the outcome have a linear relationship. Correlation between errors is often associated with time series data, thus does not apply here. The normal Q-Q plot shows a close linear fitted line as well, meaning that error distribution is normal. All in all, all assumptions for regression analysis is satisfied. I do not have any concerns about my model
+
+(d) Use a stepwise model selection procedure of your choice to obtain a best fit model. Is the model different from the full model you fit in part (b)? If yes, how so?
+
+The best fit model includes only five predictors: Population + Illiteracy + Life.Exp + Frost + Area, comparing to the model I fit in part(b) which contains all possible predictors from the dataset. (Because lower AIC indicates better fit and the AIC stopped decreasing at the model described above which means that dropping any more variables would not result in a lower AIC, thus this is the best fit model.)
+
+(e) Assess the model (from part (d)) generalizability. Perform a 10-fold cross validation to estimate model performance. Report the results.
+Mean square errors of the ten fold cross-validation were all under 7, which I think it's not bad. The estimated standard error of estimate is 0.807, less than 1. Thus I think the model predicts outside datasets pretty well meaning it has a high generalizability.
+Reference: statmethods.net/stats/regression.html
+
+```{r, echo = FALSE}
+#regression tree
+tree.s = tree(Murder ~ Population + Illiteracy + Life.Exp + Frost + Area, state)
+summary(tree.s)
+cv.t =cv.tree(tree.s,FUN = prune.tree)
+cv.t
+plot(cv.t$size, cv.t$dev, type ="b")
+
+#best tree
+prune.s = prune.tree(tree.s, best = 3)
+plot(prune.s)
+text(prune.s, pretty = 0)
+```
+
+(f) Fit a regression tree using the same covariates in your best fit model from part (d). Use cross validation to select the best tree. Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+3 node = best tree  (lowest error rate)
+
+(g) Compare the models from part (d) and (f) based on their performance. Which do you prefer? Be sure to justify your preference.
+Good model performence is identified with low variance and low squared bias. The tree model mean squared error is 2.81 whereas the regression model mean squared error is 0.651. Thus I prefer the regression model over the tree model.
+
+##Problem 3
+Problem 3 (25 pts)
+The Wisconsin Breast Cancer dataset is available as a comma-delimited text file on the UCI Machine Learning Repository http://archive.ics.uci.edu/ml. Our goal in this problem will be to predict whether observations (i.e. tumors) are malignant or benign.
+```{r}
+#load the dataset
+wdbc <- read.table("http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data", sep=",", header = FALSE)
+colnames(wdbc) <- c("id","diagnosis","radius_mean","texture_mean","perimeter_mean","area_mean","smoothness_mean","compactness_mean","concavity_mean","concave.points_mean","symmetry_mean","fractal_dimension_mean","radius_se","texture_se","perimeter_se","area_se","smoothness_se","compactness_se","concavity_se","concave.points_se","symmetry_se","fractal_dimension_se","radius_worst","texture_worst","perimeter_worst","area_worst","smoothness_worst","compactness_worst","concavity_worst","concave.points_worst","symmetry_worst","fractal_dimension_worst") 
+summary(wdbc)
+str(wdbc)
+wdbc$id<-factor(wdbc$id)
+wdbc$diagnosis <- as.character(wdbc$diagnosis)
+wdbc$cancerous[wdbc$diagnosis == "M" ] <- TRUE
+wdbc$cancerous[wdbc$diagnosis == "B"] <- FALSE
+
+#split dataset into training and testset
+smp_size <- floor(0.70 * nrow(wdbc))
+set.seed(12)
+train_ind <- sample(seq_len(nrow(wdbc)), size = smp_size)
+wdbc.train <- wdbc[train_ind, ]
+wdbc.test <- wdbc[-train_ind, ]
+
+#logistic regression
+glm.bc <- glm(cancerous ~ radius_mean+texture_mean+perimeter_mean+area_mean+smoothness_mean+compactness_mean+concavity_mean+concave.points_mean+symmetry_mean+fractal_dimension_mean, data = wdbc.train, family = "binomial")
+#+radius_se+texture_se+perimeter_se+area_se+smoothness_se+compactness_se+concavity_se+concave.points_se+symmetry_se+fractal_dimension_se+radius_worst+texture_worst+perimeter_worst+area_worst+smoothness_worst+compactness_worst+concavity_worst+concave.points_worst+symmetry_worst+fractal_dimension_worst
+summary(glm.bc)
+
+#predict the test set
+pred.bc <- predict(glm.bc, newdata = wdbc.test, type = "response")
+pred.cancerous <- rep(TRUE, 171)
+pred.cancerous[pred.bc < 0.5] <- FALSE
+table(wdbc.test$cancerous, pred.cancerous) #confusion matrix
+mean(wdbc.test$cancerous==pred.cancerous) #prediction accuracy
+
+#random forest
+wdbc$cancerous <- as.factor(wdbc$cancerous) #ensure type of random forest is "classification"
+rf.bc <- randomForest(cancerous ~ radius_mean+texture_mean+perimeter_mean+area_mean+smoothness_mean+compactness_mean+concavity_mean+concave.points_mean+symmetry_mean+fractal_dimension_mean, data = wdbc.train, importance = TRUE)
+print(rf.bc)
+
+#predict the test set
+pred.rf.bc <- predict(rf.bc, wdbc.test)
+pred.rf.cancerous <- rep(TRUE, 171)
+pred.rf.cancerous[pred.rf.bc < 0.5] <- FALSE
+table(wdbc.test$cancerous, pred.rf.cancerous) #confusion matrix
+mean(wdbc.test$cancerous==pred.rf.cancerous) #prediction accuracy
+
+#roc curves
+roc.glm <- roc(wdbc.test$cancerous, pred.bc)
+roc.rf <- roc(wdbc.test$cancerous, pred.rf.bc)
+par(mfrow = c(1,2))
+plot.roc(roc.glm)
+plot.roc(roc.rf)
+```
+
+(a) Obtain the data, and load it into R by pulling it directly from the web. (Do not download it and import it from a CSV file.) Give a brief description of the data.
+
+This dataset contains patient ID, diagnosis(benign or malignant), mean, standard error, and "worst" or largest (mean of the three largest values) of radius (mean of distances from center to points on the perimeter), texture (standard deviation of gray-scale values), perimeter, area, smoothness (local variation in radius lengths), compactness (perimeter^2 / area - 1.0), concavity (severity of concave portions of the contour), concave points (number of concave portions of the contour), symmetry, fractal dimension ("coastline approximation" - 1) of the tumor.
+
+Reference:archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.names
+
+(b) Tidy the data, ensuring that each variable is properly named and cast as the correct data type. Discuss any missing data.
+There is no missing data.
+
+(c) Split the data into a training and validation set such that a random 70% of the observations are in the training set.
+
+(d) Fit a regression model to predict whether tissue samples are malignant or benign. Classify cases in the validation set. Compute and discuss the resulting confusion matrix.
+
+The prediction accuracy is 0.94. False positive rate is 0.035. False negative rate is 0.023. Thus I think the model performance is pretty great.
+
+(e) Fit a random forest model to predict whether tissue samples are malignant or benign. Classify cases in the validation set. Compute and discuss the resulting confusion matrix.
+
+The prediction accuract is 0.94. False positive rate is 0.029. False negative rate is 0.029. Thus the model performance is also pretty great.
+
+(f) Compare the models from part (d) and (e) using ROC curves. Which do you prefer? Be sure to justify your preference.
+Regression model gives an AUC of 0.9822, random forest gives an AUC of 0.9805. I think both are good.
+
+##Problem 4
+Problem 4 (15 pts)
+Please answer the questions below by writing a short response.
+(a) Describe three real-life applications in which classification might be useful. Describe the response, as well as the predictors. Is the goal in each application inference or predictions? Explain your answer.
+
+1. Metastasis of cancer can be predicted based on the size, location of the tumor, genetic profile of the patients and other risk factors. This is helpful because doctors can make more evidence based decisions regarding treatments for cancer patients. The goal is prediction.
+
+2. Whether a candidate will win the election, for example presidencial election, can be predicted using current voting statistics, candicate's likability from the public pulled from social media, candidate's characteristics that were shown to be predictive from past trend, etc. The goal is prediction.
+
+3. Predicting whether a student can past a certain test can be predicted based on the time he or she invested in studying, how long before the test did he or she start studying, GPA, past scores of midterms or similar tests in another subject, etc. The goal is prediction. 
+
+(b) Describe three real-life applications in which regression might be useful. Describe the response, as well as the predictors. Is the goal in each application inference or predictions? Explain your answer.
+
+1. When a new product is about to be introduced to the market, researchers could predict how much sale can be expected given the current economy, competitor products sales, advertisement, location of the retail stores etc. Company can prepare the products based on the predicted amounts that's likely to be sold. The goal is prediction
+
+2. Salary can be predicted when someone is looking for another job, based on the location of the new job, mean salary of the particular position, the job seeker's education and experience level etc. This can be helpful for people to decide whether they should relocate, seek further education for higher pay, also to learn what can be expected when they make certain career decision. The goal is prediction.
+
+3. Flights, trains and buses dispatching, especially during the holiday seasons, should be predicted to minimize the trouble people might face when there isn't enough transpotation services available. Also, extra dispatching should be minimized so that there isn't too many staff on the jobs but don't have to be. The goal is prediction.
+
+(c) What are the advantages and disadvantages of a very flexible (versus a less flexible) approach for regression or classification? Under what circumstances might a more flexible approach be preferred to a less flexible approach? When might a less flexible approach be preferred?
+
+Flexible approach can find non-linear relationships, produces less error/bias from fitting the data. But it's also more likely to cause higher variance when use different training sets.
+When there are a lot of data points for training and a small variance of error when a linear model is fitted, a more flexible approach is preferred. Although flexible, the large training set should be able to produce models with relatively high generalizibility, using a more flexible approach will more likely to increase model performance without causing overfitting.
+When there is not enough data for training and/or there are a large number of predictors, it's better to use a less flexible approach to account for the potential large variance and avoid overfitting. 
+
+Problem 5 (10 pts)
+Suppose we have a dataset with five predictors, X1 = GPA, X2 = IQ, X3 = Gender (1 for Female, and 0 for Male), X4 = Interaction between GPA and IQ, and X5 = Interaction between GPA and Gender. The response is starting salary after graduation (in thousands of dollars). 
+
+(a) Which answer is correct and why?
+i. For a fixed value of IQ and GPA, males earn more on average than females.
+ii. For a fixed value of IQ and GPA, females earn more on average than males.
+iii. For a fixed value of IQ and GPA, males earn more on average than females provided that the GPA is high enough.
+iv. For a fixed value of IQ and GPA, females earn more on average than males provided that the GPA is high enough.
+
+Answer iii is correcr.
+Starting salary after graduation = 50 + 20 x GPA + 0.07 x IQ + 35 x Gender + 0.01 x GPA x IQ - 10 x GPA x Gender. So when the IQ and GPA are fixed, only 35 x Gender and -10 x GPA x Gender determines the model outcome. Because female is 1, male is 0, both items would be zeros for male. As for female, when GPA is equal to 3.5, the sum of two items equals zero; when GPA is larger than 3.5, the sum of two items is a negative number which is smaller than that for male (zero). Thus, males earn more on average than males when they have the same IQ and GPA.
+
+(b) Predict the salary of a female with IQ of 110 and a GPA of 4.0.
+50 + 20 x 4.0 + 0.07 x 110 + 35 x 1 + 0.01 x 4.0 x 110 - 10 x 4.0 x 1 = 137
+The salary of a female with IQ of 110 and a GPA of 4.0 is approximately 137,000.
+
+(c) True or false: Since the coefficient for the GPA/IQ interaction term is very small, there is little evidence of an interaction effect. Justify your answer.
+False. We don't have any information on the p-value from the FF-test to determine this variable's significance in predicting the outcome, thus it's inconclusive whether there is an interaction between GPA and IQ that affects the salary. 
+
+##Extra Credit Problem 6
+Problem 6
+```{r}
+#Split dataset Smarket into train and testset
+attach(Smarket)
+Smarket.train <- (Year<2005) #extract Smarket's data before 2005
+Smarket.2005 <- Smarket[!Smarket.train,] #extract Smarket's data after 2005
+dim(Smarket.2005) #see how many data points are included
+#Random Forest Model(Comparing with week8b lab which used a logistic regression model)
+rf.sm <- randomForest(Direction ~ Lag1+Lag2+Lag3+Lag4+Lag5+Volume, data=Smarket, subset = Smarket.train)
+rf.sm
+plot(randomForest(Direction ~ Lag1+Lag2+Lag3+Lag4+Lag5+Volume, data=Smarket, subset = Smarket.train))
+pred.sm <- predict(rf.sm, newdata = Smarket.2005)
+#check model accuracy
+table(pred.sm, Smarket.2005$Direction)
+mean(pred.sm==Smarket.2005$Direction)
+```
+(a) How accurate are the results compared to simple methods like linear or logistic regression?
+The prediction accuracy from random forest model is 0.52, whereas the logistic regression model trained with the same set of predictors had a prediction accuracy of 0.48.

@@ -1,0 +1,165 @@
+---
+title: 'INFX 573: Problem Set 5 - Learning from Data'
+author: "Shuyang Wu"
+date: 'Due: Tuesday, November 8, 2016'
+output: pdf_document
+header-includes:
+- \newcommand{\benum}{\begin{enumerate}}
+- \newcommand{\eenum}{\end{enumerate}}
+- \newcommand{\bitem}{\begin{itemize}}
+- \newcommand{\eitem}{\end{itemize}}
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset5.Rmd` file from Canvas. Open `problemset5.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset5.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps5.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE, warning=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(Sleuth3) # Contains data for problemset
+library(UsingR) # Contains data for problemset
+library(MASS) # Modern applied statistics functions
+```
+
+\benum
+\item Davis et al. (1998) collected data on the proportion of births that were male in Denmark, the Netherlands, Canada, and the United States for selected years. Davis et al. argue that the proportion of male births is declining in these countries. We will explore this hypothesis. You can obtain this data as follows:
+
+```{r}
+# Find and look at the birth data
+#library(help="Sleuth3") 
+birthData <- ex0724
+summary(birthData)
+#Denmark lm
+fit.d <- lm(Denmark ~ Year, data = birthData)
+summary(fit.d)
+#Netherlands lm
+fit.n <- lm(Netherlands ~ Year, data = birthData)
+summary(fit.n)
+#Canada lm
+fit.c <- lm(Canada ~ Year, data = birthData)
+summary(fit.c)
+#USA lm
+fit.u <- lm(Denmark ~ Year, data = birthData)
+summary(fit.u)
+```
+
+\bitem
+\item[(a)] Use the \texttt{lm} function in \textbf{R} to fit four (one per country) simple linear regression models of the yearly proportion of males births as a function of the year and obtain the least squares fits. Write down the estimated linear model for each country.
+Denmark: malebirth = -4.289e-05 x Year + 5.987e-01
+Netherlands: makebirth = -8.084e-05 x Year + 6.724e-01
+Canada: malebirth = -1.112e-04 x Year + 7.338e-01
+USA: malebirth = -4.289e-05 x Year + 5.987e-01
+
+\item[(b)] Obtain the $t$-statistic for the test that the slopes of the regression lines are zero, for each of the four countries. Is there evidence that the proportion of births that are male is truly declining over this period?
+Denmark: 4.296 on 1 and 43 DF,  p-value: 0.04424
+Netherlands: 32.61 on 1 and 43 DF,  p-value: 9.637e-07
+Canada: 16.13 on 1 and 19 DF,  p-value: 0.0007376
+USA: 4.296 on 1 and 43 DF,  p-value: 0.04424
+Given all p-values are smaller than 0.05, the null hypothesis that birth is not correlated with year can be rejected. The four negative slopes in the models suggests a negative association between year and birth, so it's suggestive that male birth rates are declining over the years.
+\eitem
+
+\item Regression was originally used by Francis Galton to study the relationship between parents and children. One relationship he considered was height. Can we predict a man's height based on the height of his father? This is the question we will explore in this problem. You can obtain data similar to that used by Galton as follows:
+
+```{r}
+# Import and look at the height data
+heightData <- tbl_df(get("father.son"))
+```
+
+\bitem
+\item[(a)] Perform an exploratory analysis of the dataset. Describe what you find. At a minimum you should produce statistical summaries of the variables, a visualization of the relationship of interest in this problem, and a statistical summary of that relationship. 
+```{r}
+# exlore data
+str(heightData)
+summary(heightData)
+# Visualize data
+xyplot(sheight ~ fheight, data = heightData,
+  xlab = "Fathers' heights",
+  ylab = "Sons' heights",
+  main = "Father and son heights"
+)
+cor(heightData$fheight, heightData$sheight)
+```
+ The dataset has two columns, fathers' heights and the corresponding sons' heights. fathers' heights have a mean of 67.77, sons' heights have a mean of 68.68, both distribution seems normal(no obvious skewness).The correlation coefficient being 0.501 implies a weak positive correlation between father and sons' heights.
+ 
+```{r}
+# exlore data
+fit.1 <- lm(sheight ~ fheight, data = heightData)
+#b
+summary(fit.1)
+#c
+confint(fit.1)
+#d
+plot(sheight ~ fheight, data = heightData)
+abline(lm(sheight ~ fheight, data = heightData))
+#e
+fit.res = resid(fit.1)
+plot(heightData$sheight, fit.res, 
+     ylab="Residuals", xlab="Sons' Heights", 
+     main="residuals versus the fitted values") 
+abline(0, 0)
+#f
+array.1 <- data.frame(fheight = c(50, 55, 70, 75, 90))
+predict(fit.1, array.1, interval="predict")
+``` 
+
+\item[(b)] Use the \texttt{lm} function in R to fit a simple linear regression model to predict son's height as a function of father's height.  Write down the model, $$\hat{y}_{\mbox{\texttt{sheight}}} = \hat{\beta}_0 + \hat{\beta_i} \times \mbox{\texttt{fheight}}$$ filling in estimated coefficient values and interpret the coefficient estimates. 
+sheight = 0.51409 x fheight + 33.88660
+
+\item[(c)] Find the 95\% confidence intervals for the estimates. You may find the \texttt{confint()} command useful.
+slope falls into [0.4610188,  0.5671673], intercept falls into [30.2912126, 37.4819961]
+
+\item[(d)] Produce a visualization of the data and the least squares regression line.
+
+\item[(e)] Produce a visualization of the residuals versus the fitted values. (You can inspect the elements of the linear model object in R using \texttt{names()}). Discuss what you see. Do you have any concerns about the linear model?  
+Residuals range from -10 to 10, residual is smallest around mean sheight, larger with higher sheights and smaller with lower shights. My concern is that linear model might not best fit the data as it only seems to fit best around the mean, thus the real relationship might be non-linear.
+
+\item[(f)] Using the model you fit in part (b) predict the height was 5 males whose father are 50, 55, 70, 75, and 90 inches respectively. You may find the \texttt{predict()} function helpful.
+       fit          
+50: 59.59126 
+55: 62.16172 
+70: 69.87312 
+75: 72.44358 
+90: 80.15498 
+
+\eitem
+
+\item \textbf{Extra Credit:}
+
+\bitem
+\item[(a)] What assumptions are made about the distribution of the explanatory variable in the normal simple linear regression model?
+The explanatory variables are assumed to have little or no multicollinearity. (Multicollinearity occurs when the independent variables are not independent from each other.)
+
+\item[(b)] Why can an $R^2$ close to one not be used as evidence that the simple linear regression model is appropriate?
+R squared == 1 indicates that the model explains all the variability of the response data around its mean. But it cannot determine whether the coefficient estimates and predictions are biased of if the model fits the data, so the residual plots should also be looked at to determine appropriateness.
+
+\item[(c)] Consider a regression of weight on height for a sample of adult males. Suppose the intercept is 5 kg. Does this imply that males of height 0 weigh 5 kg, on average? Would this imply that the simple linear regression model is meaningless?
+The intercept (often labeled the constant) is the expected mean value of Y when all X=0.
+Height 0 does not have meaning in real life, thus the intercept does not imply anything about people with zero height. Simply linear regression is not meaningless as the intercept is just a constant that's being added to the model on each corresponding y value given x to better fit the data.
+
+\item[(d)] Suppose you had data on pairs $(X,Y)$ which gave the scatterplot been below. How would you approach the analysis?
+There seems to be two trends in this scatterplot, I would do a clustering analysis trying to split the data into two groups and then do linear regression models for both groups.
+
+![Scatterplot for Extra Credit (d).](../Downloads/scatterplot.png)
+
+\eitem
+
+\eenum

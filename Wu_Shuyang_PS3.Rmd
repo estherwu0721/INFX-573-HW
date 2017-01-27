@@ -1,0 +1,130 @@
+---
+title: 'INFX 573: Problem Set 3 - Data Analysis'
+author: "Shuyang Wu"
+date: 'Due: Monday, October 18, 2016'
+output: pdf_document
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset3.Rmd` file from Canvas. Open `problemset3.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset3.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps3.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(nycflights13)
+```
+
+#### Problem 1: Flight Delays  ####
+
+Flight delays are often linked to weather conditions. How does weather impact flights from NYC? Utilize both the `flights` and `weather` datasets from the `nycflights13` package to explore this question. Include at least two visualizations to aid in communicating what you find.
+
+```{r, message=FALSE}
+#recode delayed flights to be departure_delay >= 30 min
+delay<- flights
+delay$dep_delay[delay$dep_delay >= 30] <- "T"
+delay$dep_delay[delay$dep_delay < 30] <- "F"
+delay$dep_delay <- as.logical(delay$dep_delay)
+prop.table(table(delay$dep_delay)) #16% flights were delayed
+
+#merge flights with weather based on the same time_hour and origin
+merged <- merge(delay, weather, by = c("time_hour", "origin"))
+merged <- na.omit(merged) # remove rows containing NAs
+
+#relationship between visibility and delay departure delay
+ggplot(data=merged, aes(x = merged$dep_delay, y = merged$visib)) + 
+        geom_boxplot() +
+        labs(x = "Delay status", y = "visibility at the time of departure", 
+             title = "Boxplot for delay status and visibility")
+
+#relationship between wind speed and delay departure time
+ggplot(data=merged, aes(x = merged$dep_delay, y = merged$wind_speed)) + 
+        geom_boxplot() +
+        labs(x = "Delay status", y = "wind speed at the time of departure", 
+             title = "Boxplot for delay status and wind speed")
+```
+From the boxplot of visibiliy and delay status, data does not show enough evidence that visibility and delay status is associated in any way as I had hypothesized. Visibility is mosly centered around 10 with a few outliners, thus probably not a good explanatory variable to use, despite of my intuition that low visibility would cause delayed departure. From the boxplot of wind speed and delay status, there are a few outliers for the very high wind speed, the rest of the wind speeds are mostly below 50 which makes the boxplot looks very skewed. This boxplot also does not suggest any correlation between wind speed and delay status. 
+
+#### Problem 2: 50 States in the USA ####
+
+In this problem we will use the `state` dataset, available as part of the R statistical computing platforms. This data is related to the 50 states of the United States of America. Load the data and use it to answer the following questions. 
+
+##### (a) Describe the data and each variable it contains. Tidy the data, preparing it for a data analysis. 
+```{r, message=FALSE}
+state <- as.data.frame(state.x77)
+str(state)#look at data type
+summary(state) #look at variables and distribution of the data
+names(state)[names(state) == 'Life Exp'] <- 'Life_Exp' #renaming columns
+names(state)[names(state) == 'HS Grad'] <- 'HS_Grad' 
+```
+The state dataset contains statistics of the 50 states of the United States of America. Specifically, population estimate, per capita income, percent of the population with illiteracy, life expectancy in years, murder and non-negligent manslaughter rate per 100,000 population, percentage of high-school graduates, mean number of days with minimum temperature below freezing in capital or large city, and land area in square miles.
+
+##### (b) Suppose you want to explore the relationship between a state's `Murder` rate and other characteristics of the state, for example population, illiteracy rate, and more. Begin by examine the bivariate relationships present in the data. What does your analysis suggest might be important varibles to consider in building a model to explain variation in murder rates?
+
+```{r, message=FALSE}
+state.1 <- state
+state.1$Area <- NULL #subset the state dataset because area has a higher mean than all other variables
+df_melt <- melt(state.1,"Murder") 
+ggplot(df_melt,aes(Murder,value)) + geom_point() + facet_grid(.~variable) #correlation plots of Murder and all other variables
+plot(state$Area, state$Murder) #correlation plot of Murder and all other variable cont.d
+cor(state) #correlation coefficient
+```
+Based on the correlation coefficients, Illiteracy and life expectancy are most correlated (positively and negatively) with Murder rates. Frost could also be a explanatory variable but the correlation is not as strong as the first two.
+
+##### (c) Choose one variable and fit a simple linear regression model, $Y = \beta_1X + \beta_0$, using the `lm()` function in R. Describe your results.
+
+```{r, message=FALSE}
+# Linear regression model of high school graduation rates vs income
+fit <- lm(Income ~ HS_Grad, data = state)
+summary(fit)
+```
+I used high school graduate rate to explain per capita income, linear regression model fitted a linear line with the following expression: Income = 47.162 X High School Graduation Rate + 1931.105. P-value is way smaller than 0.05, thus the suggested correlation is not random.
+
+##### (d) Develop a new research question of your own that you can address using the `state` dataset. Clearly state the question you are going to address. Provide at least one visualizations to support your exploration of this question. Discuss what you find.
+Research question: Hypothesis: Higher High School Graduation rate is correlated with a lower Illiteracy rate in the population.
+```{r, message=FALSE}
+attach(state)
+plot(HS_Grad, Illiteracy, main="Scatterplot for Illiteracy and High School Graduate Rate", 
+  	xlab="High School Graduate Rate", ylab="Illiteracy ", pch=19)
+abline(lm(Illiteracy~HS_Grad), col="red") # add regression line 
+lines(lowess(HS_Grad,Illiteracy), col="blue") # add lowess line
+fit1 <- lm(Illiteracy~HS_Grad)
+summary(fit1)
+```
+The linear regression of High School Graduation rate and Illiteracy rate: Illiteracy = -0.0496 x HS_Grad + 3.80389, with a p value << 0.05. Thus we can reject the null hypothesis that the observed correlation is by chance. The negative slope of the linear regression also suggests that the two variables are negatively correlated, thus supports the hypothesis.
+
+#### Problem 3: Income and Education ####
+
+The scatterplot below shows the relationship between per capita
+income (in thousands of dollars) and percent of population with a bachelor’s degree in 3,143
+counties in the US in 2010.
+
+##### (a) What are the explanatory and response variables? 
+Percent of population with a bachelor's degree is the explanatory variable, per capita income is the response variable.
+
+##### (b) Describe the relationship between the two variables. Make sure to discuss unusual observations, if any.
+The two variables are positivly correlated, which means a higher percent of population with a bacherlor's degree is associated with a higher per capita income.
+
+##### (c) Can we conclude that having a bachelor’s degree increases one’s income? Why ior why not?
+We can't conclude causal relationships between the two variables. Because it is not a randomized control trial, the relationship is purely based on observation, there might be confounding variables present affecting both variables.
+

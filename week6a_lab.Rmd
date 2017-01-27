@@ -1,0 +1,88 @@
+---
+title: "INFX 573 Lab: Simple Linear Regression"
+author: "Shuyang Wu"
+date: "November 1st, 2016"
+output: 
+  tufte_handout:
+    highlight: tango
+---
+
+\marginnote{\textcolor{blue}{Don't forget to list the full names of your collaborators!}}
+
+# Collaborators: 
+
+# \textbf{Instructions:}
+
+Before beginning this assignment, please ensure you have access to R and/or RStudio. 
+
+1. Download the `week6a_lab.Rmd` file from Canvas. Open `week6a_lab.Rmd` in RStudio (or your favorite editor) and supply your solutions to the assignment by editing `week6a_lab.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name.
+
+3. Be sure to include code chucks, figures and written explanations as necessary. Any collaborators must be listed on the top of your assignment. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit`, rename the R Markdown file to `YourLastName_YourFirstName_lab6a.Rmd`, and knit it into a PDF. Submit the compiled PDF on Canvas.
+
+In this lab, you will need access to the following R packages:
+
+```{r Setup, message=FALSE}
+# Load some helpful libraries
+library(tidyverse)
+```
+
+# Sports Statistics: Predicting Runs Scored in Baseball
+
+Baseball is a played between two teams who take turns batting and fielding. A run is scored when a player advances around the bases and returns to home plate. The data we will use today is from all 30 Major League Baseball teams from the 2011 season. This data set is useful for examining the relationships between wins, runs scored in a season, and a number of other player statistics.
+
+\marginnote{\textcolor{blue}{Note: More info on the data can be found here: https://www.openintro.org/stat/data/mlb11.php}}
+
+```{r setup, message=FALSE}
+# Download and load data
+download.file("http://www.openintro.org/stat/data/mlb11.RData", destfile = "mlb11.RData")
+load("mlb11.RData")
+install.packages("sp")
+install.packages("rgeos")
+install.packages("maptools")
+install.packages("spdep")
+install.packages("ggplot2")
+install.packages("devtools")
+install.packages("plyr")
+install.packages("rgdal")
+install.packages("UScensus2010", repos="http://R-Forge.R-project.org")
+install.packages("UScensus2010county", repos="http://R-Forge.R-project.org")
+install.packages("UScensus2010tract", repos="http://R-Forge.R-project.org")
+install.packages("UScensus2010cdp", repos="http://R-Forge.R-project.org")
+library(UScensus2010)
+library(UScensus2010county)
+data(washington.county10)
+plot(washington.county10)
+require(rgdal)
+readZillow_NB<-function(address,state,city=NULL){
+  fileName<-paste(address,"ZillowNeighborhoods-",state,".zip",sep="") ##full address of zip file
+  zipFile<-paste("ZillowNeighborhoods-",state,".zip",sep="")
+  zipdir <- tempfile() ### Create temp file
+  dir.create(zipdir) ### Create a folder in the temp file
+  download.file(fileName,destfile=paste(zipdir,zipFile,sep="/"))
+  unzip(paste(zipdir,zipFile,sep="/"), exdir=zipdir)
+  files <- list.files(zipdir)
+  sp_temp<-rgdal::readOGR(dsn=zipdir,layer=strsplit(files[grep("shp",paste(files,"0",sep=""))],"\\.")[[1]][1])
+  if(!is.null(city)){
+  sp_temp_city<-sp_temp[sp_temp$CITY==city,]
+  return(sp_temp_city)
+  }
+  sp_temp
+}
+install.packages('caTools')
+install.packages('RCurl')
+
+```
+
+Use the baseball data to answer the following questions:
+
+* Plot the relationship between runs and at bats. Does the relationship look linear? Describe the relationship between these two variables.
+* If you knew a team’s at bats, would you be comfortableusing a linear model to predict the number of runs?
+* If the relationship looks linear, quantify the strength of the relationship with the correlation coefficient. Discuss what you find.
+* Use the `lm()` function to fit a simple linear model for runs as a function of at bats. Write down the formula for the model, filling in estimated coefficient values.
+* Describe in words the interpretation of $\beta_1$.
+* Make a plot of the residuals versus at bats. Is there any apparent pattern in the residuals plot?
+* Comment of the fit of the model.

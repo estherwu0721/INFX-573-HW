@@ -1,0 +1,91 @@
+---
+title: 'INFX 573: Problem Set 2 - Data Wrangling'
+author: "Insert Your Name Here"
+date: 'Due: Monday, October 18, 2016'
+output: pdf_document
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset2.Rmd` file from Canvas. Open `problemset2.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset2.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps2.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(nycflights13)
+library(jsonlite)
+```
+
+#### Problem 1: Open Government Data ####
+
+Use the following code to obtain data on the Seattle Police Department Police Report Incidents.
+
+```{r}
+police_incidents <- fromJSON("https://data.seattle.gov/resource/7ais-f98f.json")
+```
+
+##### (a) Describe, in detail, what the data represents. 
+
+##### (b) Describe each variable and what it measures. Be sure to note when data is missing. Confirm that each variable is appropriately cast - it has the correct data type. If any are incorrect, recast them to be in the appropriate format. 
+
+##### (c) Produce a clean dataset, according to the rules of tidy data discussed in class. Export the data for future analysis using the Rdata format. 
+
+##### (d) Describe any concerns you might have about this data. This may include biases, missing data, or ethical concerns.
+
+#### Problem 2:  Wrangling the NYC Flights Data ####
+
+In this problem set we will use the data on all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013. You can find this data in the `nycflights13` R package. 
+
+##### (a) Importing Data: ##### 
+Load the data. 
+
+```{r}
+# Edit me.
+```
+
+##### (b) Data Manipulation: ##### 
+Use the flights data to answer each of the following questions. Be sure to answer each question with a written response and supporting analysis.
+
+- How many flights were there from NYC airports to Seattle in 2013?
+```{r}
+# Edit me.
+```
+
+- How many airlines fly from NYC to Seattle?
+```{r}
+# Edit me.
+```
+
+- How many unique air planes fly from NYC to Seattle?
+```{r}
+# Edit me.
+```
+
+- What is the average arrival delay for flights from NYC to Seattle?
+```{r}
+# Edit me.
+```
+
+- What proportion of flights to Seattle come from each NYC airport?
+
+```{r}
+# Edit me.
+```

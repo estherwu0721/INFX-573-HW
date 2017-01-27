@@ -1,0 +1,140 @@
+---
+title: 'INFX 573: Problem Set 1 - Exploring Data'
+author: "Shuyang Wu"
+date: 'Due: Monday, October 11, 2016'
+output: pdf_document
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset1.Rmd` file from Canvas. Open `problemset1.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset1.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps1.Rmd`, knit a PDF and submit both the PDF file on Canvas.
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library(tidyverse)
+library(nycflights13)
+library(ggplot2)
+```
+
+#### Problem 1: Exploring the NYC Flights Data ####
+
+In this problem set we will use the data on all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013. You can find this data in the `nycflights13` R package. 
+
+##### (a) Importing and Inspecting Data: ##### 
+Load the data and describe in a short paragraph how the data was collected and what each variable represents. Perform a basic inspection of the data and discuss what you find.
+
+```{r inspect data, message=FALSE}
+# Inspecting data
+head(flights) # did the same for weather, airlines, and airports
+tail(flights) 
+str(flights) 
+summary(flights) #look at min, mean, max of all quantitative columns, did the same for weather
+summary(weather)
+```
+
+There are four datasets in the nycflight13 library. Flights contains information on the date, time, time delayed and location of both departure and arrival, also flight number, air time and distance. The weather dataset has information on date, time, temperature, humidity, wind pressure and visibility. Airports and airlines datasets serves more as an description or explaination of the abbreviations in the flights and weather datasets. The flight dataset seems more interesting because delayed time is highly skewed. But there is quite a few missing data under the departure time, departure delay, arrival time, arrival delay and airtime columns, represented by NAs.
+
+##### (b) Formulating Questions: ##### 
+Consider the NYC flights data. Formulate two motivating questions you want to explore using this data. Describe why these questions are interesting and how you might go about answering them. 
+
+Question 1: Is there any pattern with the number of flights leaving NYC during the year?
+I'm interested in finding out if there is a particular busy time, perhaps during holidays. I plan on group the flights dataset by days and count the flights leaving NYC each day, possibly also each month and then visualize it.
+
+Question 2: Is wind speed and/or visibility correlated with more delayed departure or arrival?
+I'm interested in predicting flight delay time given weather information, but I want to try the easy solution first and see if wind speed and visibility alone has any relationship with delay times. I plan on subsetting the delayed (>30 min) flights and then adding the wind speed and visibility at corresponding times and locations. 
+
+##### (c) Exploring Data: ##### 
+
+For each of the questions you proposed in Problem 1b, perform an exploratory data analysis designed to address the question. At a minimum, you should produce two visualizations related to each question. Be sure to describe what the visuals show and how they speak to your question of interest. 
+
+```{r explore data, message=FALSE}
+### Exploratory data analysis for Q1
+daily <- group_by(flights, year, month, day) #group flights by day
+flightperday   <- summarise(daily, flights = n()) #number of flights per day
+flightperday$date = paste(flightperday$month, flightperday$day, sep="_") #dates in 2013
+
+#Histogram of number of flights:
+ggplot(data=flightperday, aes(flightperday$flights)) + 
+  geom_histogram(breaks=seq(550, 1100, by =50), 
+                 col="blue", 
+                 fill="red", 
+                 alpha = .2) + 
+  labs(title="Histogram for Number of Flights Leaving NYC Daily") +
+  labs(x="Number of Flights", y="Count") 
+
+#Plot of number of flights daily in 2013
+ggplot(data=flightperday, aes(x = flightperday$date, y = flightperday$flights, group = 1)) + 
+        geom_line() +
+        labs(x = "Date", y = "Number of Flights Leaving NYC", 
+             title = "Number of Flights Leaving NYC Daily in 2013")
+
+#Plot of number of flights monthly in 2013
+flightpermonth <- summarise(flightperday, flights = sum(flights)) #number of flights per month
+ggplot(data=flightpermonth, aes(x = flightpermonth$month, y = flightpermonth$flights, group = 1)) + 
+        geom_line() +
+        labs(x = "Month", y = "Number of Flights Leaving NYC", 
+             title = "Number of Flights Leaving NYC Monthly in 2013")
+
+#Plot of number of flights daily in each month (overlapping to see if there is any pattern)
+ggplot(data=flightperday, aes(x = flightperday$day, y = flightperday$flights, group = flightperday$month)) + 
+  geom_line(aes(colour = flightperday$month)) + scale_colour_gradient(low="red") +
+  labs(x = "Date in a month", y = "Number of Flights Leaving NYC", 
+       title = "Number of Flights Leaving NYC Daily in each month of 2013")
+```
+From the histogram for number of flights, we can see that the values mostly fall into 950~1000 range, but there are also a wide distribution of values from 600 to 1050. From the plot of number of flights daily, the numbers of flights drop by two to three hundred in every couple of days and then rise back up. Such pattern continues throughout the year. The first two months of 2013 have fewer numbers of flights on average and the following three to four months have more variation (drop in number of flights) than in the summer months. The plot of number of flights monthly also shows that the number of flights leaving NYC is the lowest during January and February. Plot of number of flights daily in each month overlapped shows that the variation pattern in each month is very similar although not completely the same.
+
+```{r explore data cont.d, message=FALSE}
+### Exploratory data analysis for Q2
+#subset delayed flights to be departure_delay >= 30 min
+delay<- subset(flights, flights$dep_delay >= 30, select=year:time_hour)
+
+#histogram of delayed departure time
+ggplot(data=delay, aes(delay$dep_delay)) + 
+  geom_histogram(breaks=seq(30, 1500, by =30), 
+                 col="blue", 
+                 fill="red", 
+                 alpha = .2) + 
+  labs(title="Histogram for Departure delay time") +
+  labs(x="Departure Delay Time in min", y="Count") 
+
+#merge flights with weather based on the same time_hour and origin
+merged <- merge(delay, weather, by = c("time_hour", "origin"))
+merged <- na.omit(merged) # remove rows containing NAs
+
+#relationship between visibility and delay departure time
+ggplot(data=merged, aes(x = merged$dep_delay, y = merged$visib)) + 
+        geom_point() +
+        labs(x = "Delay time in min", y = "visibility at the time of departure", 
+             title = "Scatterplot for delay time and visibility")
+
+#relationship between wind speed and delay departure time
+ggplot(data=merged, aes(x = merged$dep_delay, y = merged$wind_speed)) + 
+        geom_point() +
+        labs(x = "Delay time in min", y = "wind speed at the time of departure", 
+             title = "Scatterplot for delay time and wind speed")
+```
+From the histogram I see that the delay time is highly skewed with the majority of delay times being in 30 mins to an hour. From the plot of visibiliy and delay time, data does not show enough evidence that visibility and delay time is negatively correlated as I had hypothesized. In fact based on the plot, longer delay time is associated with higher visibility. From the plot of wind speed and delay time, firstly there are a few outliers for the very high wind speed but it's not really correlated with longer delay time. Besides the outliners, the rest of the wind speeds are mostly below 50 and account for most of the delay cases. Data does not suggest any strong correlation between wind speed and delay time. 
+
+##### (d) Challenge Your Results: ##### 
+
+After completing the exploratory analysis from Problem 1c, do you have any concerns about your findings? Comment on any ethical and/or privacy concerns you have with your analysis. 
+
+For my first question and analysis, I think privacy of people's traveling patterns could be at risk. In an unfortunate case, leak of the flights dataset and information on patterns of number of flights leaving NYC to terrorists could result in them planning attacks at the most crowded season/times at the airports. As for my second question and analysis, because I did not find any significant correlation between my perceived predictor and delay time, I wonder what could be the reason for some of the relatively long delays. If there is any pattern other than the weather being discovered from the datasets, for example, particular airline or maintenance team, there might be conflict of interests or privacy violations if accusations were to be made to those companies.
